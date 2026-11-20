@@ -7,6 +7,7 @@ from collections import Counter
 from importlib.metadata import entry_points
 import json
 from pathlib import Path
+import sqlite3
 import sys
 
 
@@ -15,15 +16,17 @@ NATIVE_SCORERS = ["exact_match", "numeric", "set_f1", "token_f1", "recall_at_k",
 
 def capabilities() -> dict:
     from . import __version__
+    from .guidance import GUIDES
     return {"name": "AI Evaluation", "version": __version__, "schema_version": "1.0",
             "operations": ["benchmark", "run", "summarize", "compare", "study", "factorial", "analyze-benchmark",
-                           "pass-at-k", "calibrate-judge", "samples", "analysis", "report", "guide", "import-gym", "import-inspect"],
+                           "pass-at-k", "calibrate-judge", "samples", "analysis", "report", "guide", "import-gym", "import-inspect",
+                           "experiment", "catalog-add", "catalog-runs", "catalog-query"],
             "targets": ["predictions-jsonl", "command-json", "entry-point"], "scorers": NATIVE_SCORERS,
             "imports": ["gym-export-v1", "inspect-json"],
             "plugins": {group: sorted(ep.name for ep in entry_points(group=group))
                         for group in ("ai_eval.scorers", "ai_eval.targets", "ai_eval.importers")},
             "analysis": "common-cohort system comparisons; resource frontiers; factorial effects; benchmark item analysis; group uncertainty",
-            "guides": ["experimental-design", "system-comparison", "factorial-experiments", "benchmark-development"],
+            "guides": list(GUIDES),
             "execution": "local workers; external targets own their model or harness implementation"}
 
 
@@ -179,6 +182,25 @@ def parser():
     sub.add_parser("capabilities", help="Discover operations, scorers and installed extensions")
     benchmark = sub.add_parser("benchmark", help="Inspect the benchmark contract and population")
     benchmark.add_argument("path", type=Path)
+    experiment = sub.add_parser("experiment", help="Execute a declared set of conditions and analyses, with resumable runs")
+    experiment.add_argument("plan", type=Path)
+    experiment.add_argument("--output", type=Path, required=True)
+    experiment.add_argument("--resume", action="store_true")
+    experiment.add_argument("--catalog", type=Path, help="Index the experiment and recorded runs in SQLite")
+    catalog_add = sub.add_parser("catalog-add", help="Insert or refresh native runs in a SQLite experiment catalog")
+    catalog_add.add_argument("database", type=Path)
+    catalog_add.add_argument("runs", nargs="+", type=Path)
+    catalog_runs = sub.add_parser("catalog-runs", help="Find runs by benchmark, system, experiment and metric")
+    catalog_runs.add_argument("database", type=Path)
+    for name in ("benchmark", "system", "experiment", "metric"):
+        catalog_runs.add_argument("--" + name)
+    catalog_query = sub.add_parser("catalog-query", help="Read a page from a SQLite SELECT over experiments, samples or trials")
+    catalog_query.add_argument("database", type=Path)
+    catalog_query.add_argument("--sql", required=True)
+    catalog_query.add_argument("--params", default="[]", help="Bound SQL parameters as a JSON array")
+    for command in (catalog_runs, catalog_query):
+        command.add_argument("--offset", type=int, default=0)
+        command.add_argument("--limit", type=int, default=20)
     run = sub.add_parser("run", help="Evaluate predictions, a model/harness command or an installed target")
     run.add_argument("benchmark", type=Path)
     choice = run.add_mutually_exclusive_group(required=True)
@@ -297,6 +319,19 @@ def main(argv=None):
             value = capabilities()
         elif args.operation == "benchmark":
             value = benchmark_info(args.path)
+        elif args.operation == "experiment":
+            from .experiments import run_experiment
+            value = run_experiment(args.plan, args.output, resume=args.resume, catalog=args.catalog)
+        elif args.operation == "catalog-add":
+            from .catalog import add_runs
+            value = add_runs(args.database, args.runs)
+        elif args.operation == "catalog-runs":
+            from .catalog import list_runs
+            value = list_runs(args.database, benchmark=args.benchmark, system=args.system,
+                              experiment=args.experiment, metric=args.metric, offset=args.offset, limit=args.limit)
+        elif args.operation == "catalog-query":
+            from .catalog import query
+            value = query(args.database, args.sql, params=json.loads(args.params), offset=args.offset, limit=args.limit)
         elif args.operation == "run":
             value = run_target(args.benchmark, args.output, system_name=args.system_name,
                                system_revision=args.system_revision, system_config=json.loads(args.system_config),
@@ -393,7 +428,7 @@ def main(argv=None):
             raise ValueError("unknown operation")
         print(json.dumps(value, ensure_ascii=False, indent=2, allow_nan=False))
         return 0
-    except (OSError, ValueError, RuntimeError, ImportError) as exc:
+    except (OSError, ValueError, RuntimeError, ImportError, sqlite3.Error) as exc:
         print(json.dumps({"error": str(exc)}, ensure_ascii=False), file=sys.stderr)
         return 2
 

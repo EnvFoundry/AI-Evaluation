@@ -1,31 +1,29 @@
 ---
 name: ai-evaluation
-description: Design benchmarks, compare AI systems and resource use, measure component interactions, study item behavior, and calibrate judges. Use for evaluation research on models, retrieval, agents, harnesses and scientific predictions.
+description: Design and execute AI evaluation experiments, compare systems and resource use, measure component interactions, develop benchmarks, calibrate judges and query recorded experiments. Use for models, retrieval, agents, harnesses and scientific predictions.
 ---
 
 # AI Evaluation
 
-Start with the scientific question and the decision the result should inform. Identify the system being changed, the target population, the observable outcome and the independent unit. Include model, harness, prompts, retrieval, tools and inference configuration when they affect the comparison.
+State the research question and the decision it should inform. Identify the changed system condition, target population, observable outcome and independent unit. Include model, harness, prompts, retrieval, tools and generation settings when they affect the experiment.
 
-Run `ai-eval capabilities` to discover implemented operations and installed extensions. If working from a source checkout, use `python server.py capabilities`. Use the CLI or MCP operations for execution and analysis; both call the same core.
+Run `ai-eval capabilities`; from a source checkout, `python server.py capabilities` also works. Use Python, CLI or MCP operations over the same implementation. Read installed guidance with `ai-eval guide TOPIC` or `evaluation://guides/TOPIC`.
 
-Installed guidance is available through `ai-eval guide TOPIC` or MCP resources under `evaluation://guides/TOPIC`. Choose `experimental-design`, `system-comparison`, `factorial-experiments` or `benchmark-development`. For a source checkout, read only the relevant document:
+| Question | Guide | Operation |
+| --- | --- | --- |
+| What population and outcome address the question? | `experimental-design` | `benchmark`, `run`, `summarize` |
+| Which system improves quality at a given resource use? | `system-comparison` | `study` / `eval_study` |
+| How do two component changes combine? | `factorial-experiments` | `factorial` / `eval_factorial` |
+| Which cases distinguish a reference panel? | `benchmark-development` | `analyze-benchmark` / `eval_analyze_benchmark` |
+| How do we execute and continue the whole experiment? | `experiment-plans` | `experiment` / `eval_experiment` |
+| Which recorded runs answer this question? | `experiment-catalog` | `catalog-runs`, `catalog-query` |
 
-| Task | Guide |
-| --- | --- |
-| Design a benchmark, choose population or uncertainty method | `docs/research.md` |
-| First evaluation, prediction replay, command target or comparison | `docs/workflows.md` |
-| Cross two component changes and explain their interaction | `docs/factorial-experiments.md` |
-| Study item variation, saturation and discrimination across systems | `docs/benchmark-development.md` |
-| Extend schema, scoring or execution | `docs/contracts.md`, then `docs/scoring.md` |
-| Connect a model, harness, plugin or MCP host | `docs/connect.md` |
-| Use Gym outcomes or an existing framework | `docs/gym-integration.md` or `docs/ecosystem.md` |
-| Assess automatic judgments against reference labels | `docs/judges.md` |
+For a repeatable experiment, write a plan containing the actual benchmark, named conditions, targets, configurations and analyses. Execute it into a new output directory and use `--resume` for continuation. Use `--catalog` to retain searchable results. Installed guides work when the host copies this Skill separately. For source-level details, explicitly locate the [AI Evaluation checkout](https://github.com/EnvFoundry/AI-Evaluation); `docs/experiments.md` defines plans/catalogs and `docs/workflows.md` covers individual operations. Document and SDK paths below refer to that checkout.
 
-For a comparison, name the baseline and candidate and state which conditions change. Use matching benchmark, scoring and task identities. Keep repeated trials inside their sample and related samples inside their independent group. State whether an estimate describes the full planned experiment or completed observations.
+For matched comparisons, keep benchmark, scoring and protocol compatible. Average repeated trials within samples and retain related cases within independent groups. Multi-system and factorial analyses use one common complete cohort; state coverage when it differs from the planned population. In factorial work, supply conditions in `00,10,01,11` order and interpret simple effects alongside the interaction.
 
-Choose the analysis by the question. Use `study` / `eval_study` for multiple systems on one common cohort, optionally adding measured resource use. Use `factorial` / `eval_factorial` for two crossed factors in `00, 10, 01, 11` order; read simple effects alongside the interaction. Use `analyze-benchmark` / `eval_analyze_benchmark` for a reference panel's item behavior. Pointwise intervals, observed Pareto frontiers and panel-dependent correlations answer different questions; explain the quantity actually estimated.
+Save full analyses. Begin with `analysis --section summary` or `eval_analysis(section="summary")`, then request only the systems, slices or samples needed to resolve the question. Use original trials to explain unexpected behavior. SQL helps find runs and select observations; a pooled trial average is not the weighted sample estimate. Use the existing analyses for paired uncertainty. Keep metric direction, resource units and comparison population explicit.
 
-Save the full analysis. Use `analysis --section summary` or `eval_analysis(section="summary")` for its overview, then selected sections and samples when a result needs explanation. Use slices to investigate a specific mechanism or population difference. Preserve wrong answers, execution failures and missing outcomes as distinct observations. A judge-reference disagreement calls for understanding the rubric and reference quality; it does not establish which party is correct.
+Read `docs/judges.md` for judge calibration, `docs/contracts.md` and `docs/scoring.md` for measurement extensions, and `docs/connect.md` or `sdk/typescript/README.md` for harness access.
 
-Return the result that answers the question: effect size and direction, uncertainty when estimable, coverage, relevant resource observations, concrete examples and artifact paths. Distinguish measured behavior from a hypothesis about its cause. Use the original engine for domain-specific execution; extend this environment when a new measurement or comparison is required.
+Example request: “Run these four crossed retriever and prompt configurations on the same cases, measure quality and token use, then explain whether either change helps only in combination.” Return the plan and result paths, measured effects, coverage, resource observations and concrete cases; distinguish the observed result from a proposed cause.

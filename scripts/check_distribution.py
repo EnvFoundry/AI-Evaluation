@@ -16,7 +16,9 @@ wheels = sorted((root / 'dist').glob(f'envfoundry_ai_evaluation-{version}-*.whl'
 if len(wheels) != 1:
     raise SystemExit('build exactly one current wheel before checking the distribution')
 with ZipFile(wheels[0]) as archive:
-    for source in (root / 'src' / 'ai_eval').glob('*.py'):
+    for source in (root / 'src' / 'ai_eval').iterdir():
+        if source.suffix not in ('.py', '.sql'):
+            continue
         member = 'ai_eval/' + source.name
         if archive.read(member) != source.read_bytes():
             raise AssertionError(f'wheel contains stale source: {member}')
@@ -37,7 +39,10 @@ with tempfile.TemporaryDirectory(prefix='ai-eval-dist-') as directory:
     capabilities = json.loads(subprocess.check_output([str(python), '-m', 'ai_eval', 'capabilities'],
                                                      cwd=temporary, env=clean_env, text=True))
     assert capabilities['version'] == version
-    assert {'study', 'factorial', 'analyze-benchmark', 'analysis', 'guide'} <= set(capabilities['operations'])
+    assert {'study', 'factorial', 'analyze-benchmark', 'analysis', 'guide', 'experiment'} <= set(capabilities['operations'])
+    subprocess.run([str(python), '-c',
+                    'from importlib.resources import files; assert files("ai_eval").joinpath("catalog.sql").read_text()'],
+                   cwd=temporary, env=clean_env, check=True)
     plugin = temporary / 'relocated-plugin'
     plugin.mkdir()
     shutil.copytree(root / 'src', plugin / 'src', ignore=shutil.ignore_patterns('__pycache__', '*.egg-info'))

@@ -17,9 +17,11 @@ def create_server(root: str | Path):
 
     from .analysis import compare, pass_at_k, summarize
     from .benchmarks import analyze_benchmark
+    from .catalog import add_runs, list_runs, query
     from .cli import analysis_page, _write_json, benchmark_info, bounded_analysis, capabilities, run_info, run_target, samples_page
     from .factorial import factorial
-    from .guidance import GUIDES, get_guide
+    from .experiments import run_experiment
+    from .guidance import GUIDES, get_guide, plan_experiment, find_experiments
     from .importers import import_gym, import_inspect
     from .report import load_analysis, write_report
     from .studies import compare_systems
@@ -56,6 +58,8 @@ def create_server(root: str | Path):
         "for selected details or eval_report for offline HTML. eval_samples reads original trials. "
         "Research guides are resources under evaluation://guides/. Use study for system comparisons, "
         "factorial for crossed component changes, and analyze_benchmark for item behavior across systems."
+        " Use eval_experiment to execute a saved plan and its analyses; use the catalog to find prior runs "
+        "before loading individual samples. Catalog summaries retain each benchmark's measurement scale."
     ))
 
     @server.tool(annotations=read)
@@ -64,12 +68,37 @@ def create_server(root: str | Path):
         return capabilities() | {"workspace": str(workspace), "sample_page_limit": 100,
                                  "analysis_detail_limit": 20,
                                  "resources": [f"evaluation://guides/{topic}" for topic in GUIDES],
-                                 "prompts": ["design_study", "develop_benchmark", "interpret_results"]}
+                                 "prompts": ["design_study", "develop_benchmark", "interpret_results", "plan_experiment", "find_experiments"]}
 
     @server.tool(annotations=read)
     def eval_benchmark(benchmark: str) -> dict:
         """Inspect benchmark identity, protocol, metrics, groups and slice fields."""
         return benchmark_info(path(benchmark))
+
+    @server.tool(annotations=execute)
+    def eval_experiment(plan: str, output: str, resume: bool = False, catalog: str | None = None) -> dict:
+        """Execute a JSON plan's conditions and analyses; optionally index its runs in SQLite."""
+        return bounded_analysis(run_experiment(path(plan), path(output), resume=resume,
+                                               catalog=path(catalog) if catalog is not None else None))
+
+    @server.tool(annotations=write)
+    def eval_catalog_add(catalog: str, runs: list[str]) -> dict:
+        """Insert or refresh native runs, preserving samples, individual trials and metric definitions."""
+        return add_runs(path(catalog), [path(run) for run in runs])
+
+    @server.tool(annotations=read)
+    def eval_catalog_runs(catalog: str, benchmark: str | None = None, system: str | None = None,
+                          experiment: str | None = None, metric: str | None = None,
+                          offset: int = 0, limit: int = 20) -> dict:
+        """Find runs with per-run sample-weighted means and explicit coverage; at most 100 rows."""
+        return list_runs(path(catalog), benchmark=benchmark, system=system, experiment=experiment,
+                         metric=metric, offset=offset, limit=limit)
+
+    @server.tool(annotations=read)
+    def eval_catalog_query(catalog: str, sql: str, params: list | None = None,
+                           offset: int = 0, limit: int = 20) -> dict:
+        """Read a bounded SELECT page from runs, metrics, samples, sample_metrics, trials or scores."""
+        return query(path(catalog), sql, params=params, offset=offset, limit=limit)
 
     @server.tool(annotations=execute)
     def eval_run(benchmark: str, output: str, system_name: str, system_revision: str,
@@ -214,6 +243,9 @@ def create_server(root: str | Path):
     for topic, (title, _) in GUIDES.items():
         server.resource(f"evaluation://guides/{topic}", name=topic, title=title,
                         description=title, mime_type="text/markdown")(guide_resource(topic))
+
+    server.prompt()(plan_experiment)
+    server.prompt()(find_experiments)
 
     @server.prompt()
     def design_study(question: str, systems: str, population: str) -> str:

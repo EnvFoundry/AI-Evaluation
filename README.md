@@ -2,7 +2,7 @@
 
 **Design benchmarks, measure AI systems, and study what changes their behavior.**
 
-[中文](README.zh-CN.md) · [Workflows](docs/workflows.md) · [Research methods](docs/research.md) · [Connect a harness](docs/connect.md)
+[中文](README.zh-CN.md) · [Experiment plans](docs/experiments.md) · [Workflows](docs/workflows.md) · [Research methods](docs/research.md) · [Connect a harness](docs/connect.md)
 
 AI Evaluation is a standalone research environment for models, retrieval systems, agents and scientific workflows. It connects a research question to a task population, a complete system description, an execution protocol and observed outcomes. Researchers and agents use the same Python, CLI and MCP operations.
 
@@ -16,10 +16,10 @@ Python 3.11 or newer. The core and reports use the standard library.
 git clone https://github.com/EnvFoundry/AI-Evaluation.git
 cd AI-Evaluation
 python -m pip install -e .
-python examples/research_study.py --output runs/research-study
+python examples/experiment_plan.py --output runs/planned-study
 ```
 
-The example executes four lexical retrievers on an authored corpus of 18 queries in six topic groups. It crosses query expansion with phrase reranking, records the work each algorithm performs, and writes three analyses with portable HTML reports.
+The example executes a declarative experiment plan: four lexical retrievers on an authored corpus of 18 queries in six topic groups, crossing query expansion with phrase reranking. It records work, writes system/factorial/item analyses and offline reports, and stores the experiment in a local SQLite catalog. Re-running the plan resumes recorded conditions.
 
 | Query expansion | Phrase reranking | Recall@1 | Mean token comparisons |
 | --- | --- | ---: | ---: |
@@ -30,12 +30,20 @@ The example executes four lexical retrievers on an authored corpus of 18 queries
 
 Expansion contributes no recall on its own, but adds `1/3` when phrase reranking is active. The factorial analysis exposes that interaction. The system study identifies the observed quality–work frontier; benchmark analysis identifies six cases that every reference system solves. These results explain the constructed retrieval mechanism. They are not measurements of model performance or natural-language generalization.
 
-Open `runs/research-study/systems.html`, `factorial.html` and `benchmark-analysis.html`. The same directory contains the corpus, complete run records and analysis JSON. [Workflows](docs/workflows.md) explains each operation and includes prediction replay and a physical-parameter solver.
+Open `runs/planned-study/experiment/analyses/systems.html`, `effects.html` and `items.html`. The directory also contains the experiment plan, corpus, target program, run observations, analysis JSON and `catalog.sqlite`.
+
+```sh
+ai-eval experiment runs/planned-study/plan.json --output runs/planned-study/experiment --catalog runs/planned-study/catalog.sqlite --resume
+ai-eval catalog-query runs/planned-study/catalog.sqlite --sql "SELECT system_revision,mean,recorded_trials FROM run_metrics WHERE metric='recall' ORDER BY system_revision"
+```
+
+A plan names every system condition, target, execution setting and analysis. The catalog preserves individual samples, trials and metric definitions; its means first average within each sample. Querying the catalog does not turn runs on different populations into a paired comparison. [Experiment plans and catalog](docs/experiments.md) defines these semantics. [Workflows](docs/workflows.md) covers direct operations, prediction replay and a physical-parameter solver.
 
 ## From observations to research decisions
 
 | Question | Operation | Method |
 | --- | --- | --- |
+| How do we repeat a whole study and find its recorded results? | `experiment`, catalog operations | Declarative conditions, resumable runs, stored analyses and paginated SQL-backed discovery |
 | Which system should we use at a given resource budget? | `study` | One common cohort, paired differences against a baseline, group intervals and an observed resource frontier |
 | How do two interventions combine? | `factorial` | Four conditions, main and conditional effects, and a difference-in-differences interaction |
 | How informative are these benchmark cases for our systems? | `analyze-benchmark` | Item facility, dispersion, floor/ceiling and item–rest association across a reference panel |
@@ -57,6 +65,8 @@ ai-eval connect --root /absolute/path/to/studies --output mcp.json
 A target can wrap a local model, hosted API, retrieval pipeline, simulator or complete agent harness. It receives task inputs and a trial seed; reference answers remain with scoring. Serving and provider configuration belong to the target's runtime.
 
 MCP offers the same execution and analysis operations, method resources, research prompts and paginated observations. Agents can begin with a question and a small set of records, then request the details needed to resolve it. The [connection guide](docs/connect.md) describes configuration, plugin entry points and Python interfaces; the [evaluation skill](skills/ai-evaluation/SKILL.md) provides task-specific guidance.
+
+The [TypeScript SDK](sdk/typescript/README.md) gives Node harnesses typed access to experiment execution, analysis and catalog queries. Python carries out the research operations; SQL preserves the experimental relationships; the SDK manages the subprocess exchange. Each environment can run independently.
 
 ## Develop
 

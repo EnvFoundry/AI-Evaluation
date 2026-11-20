@@ -8,3 +8,8 @@ recursive-include skills *.md
 recursive-include .codex-plugin *.json
 recursive-include .claude-plugin *.json
 recursive-include .agents/plugins *.json
+
+recursive-include sdk/typescript *.ts *.json *.md *.mjs
+prune sdk/typescript/node_modules
+prune sdk/typescript/dist
+include sdk/typescript/LICENSE

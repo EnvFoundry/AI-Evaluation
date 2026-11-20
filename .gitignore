@@ -6,3 +6,7 @@ build/
 dist/
 runs/
 .coverage
+
+node_modules/
+*.tgz
+target/

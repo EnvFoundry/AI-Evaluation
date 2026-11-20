@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "envfoundry-ai-evaluation"
-version = "0.2.0"
+version = "0.3.0"
 description = "Benchmark design, reproducible evaluation and statistical comparison for AI systems"
 readme = "README.md"
 requires-python = ">=3.11"
@@ -27,3 +27,6 @@ Documentation = "https://github.com/EnvFoundry/AI-Evaluation/tree/main/docs"
 
 [tool.setuptools.packages.find]
 where = ["src"]
+
+[tool.setuptools.package-data]
+ai_eval = ["*.sql"]

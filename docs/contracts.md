@@ -1,6 +1,6 @@
 # Evaluation contracts
 
-Schema version is `1.0`; package version is `0.2.0`. Python package: `ai_eval`; CLI: `ai-eval`.
+Schema version is `1.0`; package version is `0.3.0`. Python package: `ai_eval`; CLI: `ai-eval`.
 
 ## Benchmark
 
@@ -81,3 +81,7 @@ Native prediction JSONL uses `sample_id`, optional `trial` (absence reuses that 
 Result importers produce the same run directory contract, retaining source format/revision, source identity and original metadata. Gym imports use export-v1 rows and preserve unscored statuses, task/data identity and rollout metadata. Inspect imports use JSON logs and explicit scorer/value selection. Aggregate-only result tables do not become invented sample observations. Imported populations must be aligned explicitly before paired comparisons.
 
 Python, CLI and MCP share these functions. Installed targets and importers use `ai_eval.targets` and `ai_eval.importers` entry points. MCP returns bounded summaries and paginated samples; result payloads stay in files.
+
+## Experiment plans and result catalog
+
+[Experiments](experiments.md) defines plan schema `1.0`, condition execution/resume and SQLite tables/views. Plans and catalogs retain the existing run and analysis formats; SQL browsing does not change their pairing or weighting semantics.

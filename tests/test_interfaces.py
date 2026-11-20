@@ -247,15 +247,17 @@ class MCPTests(unittest.TestCase):
                         names = {tool.name for tool in (await session.list_tools()).tools}
                         self.assertEqual(names, {"eval_capabilities", "eval_benchmark", "eval_run", "eval_summarize", "eval_compare",
                                                  "eval_import", "eval_samples", "eval_report", "eval_pass_at_k", "eval_calibrate_judge",
-                                                 "eval_study", "eval_factorial", "eval_analyze_benchmark", "eval_analysis"})
+                                                 "eval_study", "eval_factorial", "eval_analyze_benchmark", "eval_analysis",
+                                                 "eval_experiment", "eval_catalog_add", "eval_catalog_runs", "eval_catalog_query"})
 
                         resources = {str(resource.uri) for resource in (await session.list_resources()).resources}
                         self.assertEqual(resources, {f"evaluation://guides/{topic}" for topic in (
-                            "experimental-design", "system-comparison", "factorial-experiments", "benchmark-development")})
+                            "experimental-design", "system-comparison", "factorial-experiments", "benchmark-development",
+                            "experiment-plans", "experiment-catalog")})
                         guide = await session.read_resource("evaluation://guides/factorial-experiments")
                         self.assertIn("difference of differences", guide.contents[0].text)
                         prompts = {prompt.name for prompt in (await session.list_prompts()).prompts}
-                        self.assertEqual(prompts, {"design_study", "develop_benchmark", "interpret_results"})
+                        self.assertEqual(prompts, {"design_study", "develop_benchmark", "interpret_results", "plan_experiment", "find_experiments"})
                         prompt = await session.get_prompt("interpret_results", arguments={
                             "question": "Does retrieval help?", "analysis": "study.json"})
                         self.assertIn("Does retrieval help?", prompt.messages[0].content.text)
@@ -326,6 +328,22 @@ class MCPTests(unittest.TestCase):
                         self.assertTrue(bounded["confusion"]["truncated"])
                         self.assertTrue(all(len(row) == 20 for row in bounded["confusion"]["rows"]))
                         self.assertEqual(len(json.loads((root / "complete-calibration.json").read_text())["confusion"]["labels"]), 28)
+                        plan = {"schema_version": "1.0", "name": "MCP study", "benchmark": "benchmark.json",
+                            "conditions": [{"id": name, "system": {"name": name, "revision": "1"},
+                                            "target": {"predictions": f"{name}.jsonl"}}
+                                           for name in ("baseline", "candidate")],
+                            "analyses": [{"id": "systems", "kind": "study", "metric": "accuracy", "resamples": 20}]}
+                        write_json(root / "plan.json", plan)
+                        experiment = await call("eval_experiment", plan="plan.json", output="planned", catalog="catalog.sqlite")
+                        self.assertEqual(experiment["status"], "complete")
+                        catalog = await call("eval_catalog_runs", catalog="catalog.sqlite", experiment=experiment["experiment_id"], limit=1)
+                        self.assertEqual(catalog["total"], 2)
+                        self.assertEqual(catalog["next_offset"], 1)
+                        added = await call("eval_catalog_add", catalog="catalog.sqlite", runs=["candidate"])
+                        self.assertEqual(added["runs"][0]["recorded_trials"], 8)
+                        selected = await call("eval_catalog_query", catalog="catalog.sqlite",
+                                              sql="SELECT count(*) AS trials FROM trials")
+                        self.assertEqual(selected["items"], [{"trials": 24}])
                         error = await session.call_tool("eval_samples", {"run": "candidate", "limit": 101})
                         self.assertTrue(error.isError)
                         error = await session.call_tool("eval_benchmark", {"benchmark": "../benchmark.json"})

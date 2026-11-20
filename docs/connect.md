@@ -14,6 +14,12 @@ ai-eval benchmark examples/retrieval/benchmark.json
 
 Core execution and reports use the Python standard library. The `mcp` extra adds the optional MCP SDK. `capabilities` reports installed versions, native operations and discovered entry-point names. It does not connect to a model provider.
 
+## Planned experiments and TypeScript
+
+`ai-eval experiment PLAN --output DIRECTORY --catalog catalog.sqlite` executes named conditions and existing analyses from one plan. Add `--resume` to reuse recorded outcomes. Catalog operations add existing runs, list conditions with filters, and query samples/trials through parameterized read queries. See [experiment plans](experiments.md) for the schema and runnable example.
+
+The [TypeScript SDK](../sdk/typescript/README.md) provides typed methods for these operations and the original analysis interface. It runs the installed Python package with an argument array; environment selection, cancellation and process errors remain visible to the harness.
+
 ## Predictions and command targets
 
 Prediction JSONL supplies recorded outputs, keyed by sample ID and optionally trial:
@@ -128,6 +134,10 @@ The stdio server resolves data and result paths relative to `--root`, independen
 |---|---|
 | `eval_capabilities` | Discover operations, installed extensions and response limits. |
 | `eval_benchmark` | Read benchmark identity, protocol, metric definitions and population size. |
+| `eval_experiment` | Execute or resume named conditions and analyses from a plan. |
+| `eval_catalog_add` | Store existing runs in the local catalog. |
+| `eval_catalog_runs` | Browse conditions, metrics and coverage through bounded pages. |
+| `eval_catalog_query` | Read selected SQL columns/rows with parameters and a page limit. |
 | `eval_run` | Execute predictions, a command or an installed target and return run identity and outcome counts. |
 | `eval_summarize` | Return a metric estimate, group interval, coverage and slice overview. |
 | `eval_compare` | Return a paired comparison with explicit missing-data treatment. |
@@ -143,13 +153,15 @@ The stdio server resolves data and result paths relative to `--root`, independen
 
 MCP analysis replies return primary estimates and coverage. Samples, slices, groups and exclusions appear as counts; full system configurations remain in the saved analysis. Other lists retain up to 20 entries with total counts. Supply `output` on analysis tools to save complete JSON. Use `eval_analysis(source=..., section="summary")` for an overview or another named section for selected details. Both `eval_analysis` and `eval_samples` default to 20 rows and accept up to 100. Trial output previews stop at 2,000 characters; full outputs remain in `results.jsonl`.
 
-The server exposes four Markdown resources under `evaluation://guides/`: `experimental-design`, `system-comparison`, `factorial-experiments`, and `benchmark-development`. These work from an installed wheel as well as a checkout. Three prompts connect a question to the tools:
+The server exposes six Markdown resources under `evaluation://guides/`: `experimental-design`, `system-comparison`, `factorial-experiments`, `benchmark-development`, `experiment-plans` and `experiment-catalog`. These work from an installed wheel as well as a checkout. Prompts connect a question to the tools; discovery lists their current names and arguments:
 
 | Prompt | Arguments | Use |
 |---|---|---|
 | `design_study` | `question`, `systems`, `population` | Specify and execute a scientific comparison. |
 | `develop_benchmark` | `capability`, `population`, `reference_systems` | Construct or revise a measurement using item behavior. |
 | `interpret_results` | `question`, `analysis` | Explain a recorded analysis and its relevant observations. |
+| `plan_experiment` | `question`, `benchmark`, `conditions` | Prepare and execute named conditions and analyses. |
+| `find_experiments` | `question`, `catalog` | Retrieve the runs and observations relevant to a research question. |
 
 Judge calibration uses JSONL records such as `{"id":"case-1","group":"source-1","reference":"pass","judge":"fail"}`. Run `ai-eval calibrate-judge judgments.jsonl --labels '["pass","fail"]' --json-output reports/calibration.json`, or use `eval_calibrate_judge` with `source` and optional `output`. It reports label agreement, a group-bootstrap interval, Cohen's kappa and a confusion matrix. Reference judgments are a chosen comparison standard; agreement does not establish correctness. MCP returns up to 20 matrix labels and per-class records with explicit truncation counts. Saved JSON retains all labels and records.
 

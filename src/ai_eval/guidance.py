@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import json
+
 
 GUIDES = {
     "experimental-design": (
@@ -108,6 +110,58 @@ systems or held-out groups, preserve revisions, and describe the population chan
 Save full output and use eval_analysis(section='samples', search=...) for bounded
 item profiles; eval_report renders an offline development report.""",
     ),
+    "experiment-plans": (
+        "Run a research question as a repeatable experiment",
+        """Use experiment PLAN --output DIR, or eval_experiment, to execute named
+system conditions against a benchmark and produce the requested analyses. Each
+condition records the target and full system configuration. Use prediction files
+for recorded outputs, command targets for an external harness, or an installed
+target plugin. References remain on the scoring side of the target interface.
+
+Design the comparison before running it: name the outcome, baseline, independent
+unit and resource measurement; identify exactly which conditions change. A system
+study compares multiple conditions on a common cohort. A factorial study crosses
+two factors in 00,10,01,11 order. Benchmark analysis describes item behavior across
+the selected reference panel. Use the appropriate method guide for those meanings.
+
+Run the plan once, retain its output directory, and use --resume to continue that
+same experiment. Completed observations remain in their runs. Change the plan and
+output location for a different system revision, benchmark or execution protocol.
+Execution settings such as worker count affect resource observations; sequential
+conditions alone do not control time-varying service load or external state.
+
+Save the complete analysis and use its bounded summary before requesting samples
+or slices. Read the report to compare effects and resource use, then examine the
+cases needed to explain the result. Return the plan, runs and analysis locations
+with a concise answer to the original question. An authored demonstration teaches
+the workflow; conclusions about a real model require that model's recorded runs.""",
+    ),
+    "experiment-catalog": (
+        "Find and query recorded experiments",
+        """Use --catalog when executing an experiment, or catalog-add DATABASE
+RUN..., to retain run metadata and measurements in SQLite. catalog-runs, or
+eval_catalog_runs, locates runs by benchmark, system, experiment and metric. Read
+a bounded page first; retrieve the original run or saved analysis for full context.
+
+Keep benchmark revision, execution protocol, scoring definition and system
+configuration in the comparison. A metric name alone is not enough: two fields
+called accuracy may describe different populations or scoring rules. The catalog
+organizes recorded experiments; it does not make unrelated runs comparable.
+
+Per-run summaries first average scored trials within each sample and then apply
+sample weights. Coverage describes which planned observations supplied scores.
+More trials on one sample should not silently give it more population weight.
+A SQL average over all trial rows answers a different question. Retain sample,
+trial and independent-group levels when writing a query.
+
+catalog-query DATABASE --sql SQL returns a bounded page from a SELECT query; pass
+values separately with --params. Inspect the installed schema for table and field
+names. Use SQL to locate conditions, inspect coverage or select observations, and
+the existing study/factorial operations for their paired group uncertainty. Do not
+pool a score across different benchmarks or treat catalog search as a statistical
+selection rule. For longitudinal claims, distinguish improving systems from changes
+in the measured task population, budget or scorer.""",
+    ),
 }
 
 
@@ -117,3 +171,24 @@ def get_guide(topic: str = "experimental-design") -> dict:
         raise ValueError(f"unknown guide; choose one of: {', '.join(GUIDES)}")
     title, content = GUIDES[topic]
     return {"topic": topic, "title": title, "content": content}
+
+
+def plan_experiment(question: str, conditions: str, benchmark: str) -> str:
+    """Turn a scientific comparison into an executable experiment plan."""
+    context = json.dumps({"question": question, "conditions": conditions, "benchmark": benchmark}, ensure_ascii=False)
+    return ("Prepare and run this experiment when its inputs are available: " + context + "\n"
+            "Read evaluation://guides/experiment-plans. Discover the benchmark and installed targets. "
+            "Write the plan using actual target configurations, the relevant metric and resource units. "
+            "Choose study, factorial or benchmark analysis from the question. Execute the plan, preserve "
+            "its output for continuation, and report the measured effect, coverage and artifact locations.")
+
+
+def find_experiments(question: str, catalog: str) -> str:
+    """Answer a research question using the relevant recorded experiments."""
+    context = json.dumps({"question": question, "catalog": catalog}, ensure_ascii=False)
+    return ("Find the recorded experiments relevant to this question: " + context + "\n"
+            "Read evaluation://guides/experiment-catalog. Start with eval_catalog_runs and a bounded "
+            "page; inspect system, benchmark, protocol and scoring definitions before comparing results. "
+            "Use parameterized SQL only for the observations needed by the question. Preserve the "
+            "sample/trial weighting and coverage, then use the shared analysis operations when paired "
+            "effects or uncertainty are needed. Return the supported conclusion and source run locations.")

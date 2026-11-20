@@ -22,5 +22,28 @@ jobs:
       - run: python -m unittest discover -s tests -v
       - run: python examples/run_examples.py
       - run: python examples/research_study.py
+      - run: python examples/experiment_plan.py
       - run: python -m build
       - run: python scripts/check_distribution.py
+
+  typescript:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: '3.13'
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '24'
+      - run: python -m pip install -e .
+      - run: npm ci --ignore-scripts --no-audit --no-fund
+        working-directory: sdk/typescript
+      - run: npm test
+        working-directory: sdk/typescript
+      - run: npm pack --dry-run
+        working-directory: sdk/typescript
